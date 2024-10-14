@@ -1,0 +1,226 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi", "relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id             String    @id @default(uuid())
+  username       String    @db.VarChar(255)
+  password       String
+  email          String?
+  firstName      String?   @db.VarChar(255)
+  lastName       String?   @db.VarChar(255)
+  role           String
+  failLoginCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+}
+
+model User {
+  id                  String                            @id @default(uuid())
+  username            String                            @db.VarChar(255)
+  password            String
+  email               String?
+  firstName           String?                           @db.VarChar(255)
+  lastName            String?                           @db.VarChar(255)
+  mobile              String?
+  failLoginCount      Int                               @default(0)
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
+  deletedAt           DateTime?
+  forgetPassword      ForgetPassword[]
+  notifications       Notilfication[]
+  team                OrganizationTeam[]
+  reports             Report[]
+  files               File[]
+  reportApprovals     ReportApproval[]
+  workflowLineApprove OrganizationWorkflowLineApprove[]
+  OrganizationClient  OrganizationClient[]
+
+  @@unique([username, email])
+  @@index([email, username])
+  @@map("users")
+}
+
+model ForgetPassword {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("forget_passwords")
+}
+
+model Organization {
+  id                  String                            @id @default(uuid())
+  name                String                            @db.VarChar(255)
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
+  deletedAt           DateTime?
+  billingCategories   BillingCategory[]
+  billings            Billing[]
+  notilfications      Notilfication[]
+  report              Report[]
+  approvals           ReportApproval[]
+  teams               OrganizationTeam[]
+  files               File[]
+  workflows           OrganizationWorkflow[]
+  workflowLineApprove OrganizationWorkflowLineApprove[]
+  organizationClient  OrganizationClient[]
+  reportCategories    OrganizationReportCategory[]
+
+  @@map("organizations")
+}
+
+model OrganizationTeam {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  role           String
+
+  @@map("organization_teams")
+}
+
+model OrganizationClient {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@map("organization_clients")
+}
+
+model BillingCategory {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("billing_categories")
+}
+
+model Billing {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("billings")
+}
+
+model OrganizationWorkflow {
+  id             String                            @id @default(uuid())
+  organizationId String
+  organization   Organization                      @relation(fields: [organizationId], references: [id])
+  name           String
+  reportCategory OrganizationReportCategory?
+  lineApproves   OrganizationWorkflowLineApprove[]
+
+  @@map("organization_workflows")
+}
+
+model OrganizationReportCategory {
+  id                     String               @id @default(uuid())
+  organizationId         String
+  organization           Organization         @relation(fields: [organizationId], references: [id])
+  organizationWorkflowId String               @unique
+  workflow               OrganizationWorkflow @relation(fields: [organizationWorkflowId], references: [id])
+  name                   String
+  reports                Report[]
+
+  @@map("organization_report_categories")
+}
+
+model OrganizationWorkflowLineApprove {
+  id                   String               @id @default(uuid())
+  organizationId       String
+  organization         Organization         @relation(fields: [organizationId], references: [id])
+  organizationWorkflow String
+  workflow             OrganizationWorkflow @relation(fields: [organizationWorkflow], references: [id])
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id])
+  seq                  Int
+
+  @@map("organization_workflow_line_approves")
+}
+
+model Report {
+  id                           String                      @id @default(uuid())
+  organizationId               String?
+  organization                 Organization?               @relation(fields: [organizationId], references: [id])
+  userId                       String
+  user                         User                        @relation(fields: [userId], references: [id])
+  organizationReportCategoryId String?
+  reportCategory               OrganizationReportCategory? @relation(fields: [organizationReportCategoryId], references: [id])
+  title                        String
+  description                  String?
+  mapLat                       Float?
+  mapLng                       Float?
+  reportLevel                  Int?
+  step                         Int
+  status                       String
+  published                    Boolean                     @default(false)
+  createdAt                    DateTime                    @default(now())
+  updatedAt                    DateTime                    @updatedAt
+  approvals                    ReportApproval[]
+  images                       File[]
+
+  @@map("reports")
+}
+
+model ReportApproval {
+  id             String       @id @default(uuid())
+  reportId       String
+  report         Report       @relation(fields: [reportId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  description    String
+  status         String
+  step           Int
+  isHistory      Boolean
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  images         File[]
+
+  @@map("report_approvals")
+}
+
+model File {
+  id               String          @id @default(uuid())
+  organizationId   String
+  organization     Organization    @relation(fields: [organizationId], references: [id])
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  fileName         String
+  ext              String
+  path             String
+  fullPath         String
+  reports          Report[]
+  reportApproval   ReportApproval? @relation(fields: [reportApprovalId], references: [id])
+  reportApprovalId String?
+
+  @@map("files")
+}
+
+model Notilfication {
+  id             String        @id @default(uuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  message        String
+
+  @@map("notifications")
+}
